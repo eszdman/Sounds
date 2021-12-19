@@ -1,4 +1,4 @@
-package main
+package opengl
 
 import (
 	"fmt"
@@ -41,44 +41,6 @@ type shader struct {
 type uniform struct {
 	uType uniformType
 	name  string
-}
-
-func appendUniforms(uniforms []uniform, source string) {
-
-	lines := strings.Split(source, "\n")
-	startMaterialStruct := false
-	for _, line := range lines {
-		if !startMaterialStruct && (strings.Contains(line, "struct Material") || strings.Contains(line, "struct material")) {
-			startMaterialStruct = true
-			continue
-		}
-
-		if startMaterialStruct {
-			words := strings.Split(strings.Trim(line, " "), " ")
-			if strings.Contains(line, "};") {
-				break
-			}
-
-			uType, error := getUniformTypeFromString(strings.TrimSpace(words[0]))
-			if error != nil {
-				fmt.Println(error.Error())
-			}
-
-			name := strings.TrimSpace(strings.Replace(words[1], ";", "", -1))
-			u := uniform{uType, name}
-
-			alreadyAdded := false
-			for _, uniform := range uniforms {
-				if uniform.name == name {
-					alreadyAdded = true
-				}
-			}
-
-			if !alreadyAdded {
-				uniforms = append(uniforms, u)
-			}
-		}
-	}
 }
 
 // GetUniformTypeFromString Get the uniform type form a shader word
