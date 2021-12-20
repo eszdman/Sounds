@@ -8,6 +8,7 @@ import (
 	"github.com/eszdman/Sounds/ui/wrapper"
 	"github.com/inkyblackness/imgui-go/v4"
 	"os"
+	"runtime"
 )
 
 const windowWidth = 1600
@@ -23,11 +24,14 @@ func RunUI() {
 		os.Exit(-1)
 	}
 	keep := true
-	imguiRenderer, err := wrapper.NewOpenGL3("#version 430")
-	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(-1)
+	version := "#version 430"
+	os := runtime.GOOS
+	switch os {
+	case "darwin":
+		version = "#version 150"
+	default:
 	}
+	imguiRenderer, err := wrapper.NewOpenGL3(version)
 	defer env.NewPlatform.Dispose()
 	defer context.Destroy()
 	defer imguiRenderer.Dispose()
