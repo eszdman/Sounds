@@ -1,11 +1,14 @@
-package gui
+package wrapper
 
 import (
+	"github.com/eszdman/Sounds/env"
 	"github.com/eszdman/Sounds/ui/platform"
+	"github.com/faiface/mainthread"
 	"github.com/go-gl/gl/v3.2-core/gl"
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/inkyblackness/imgui-go/v4"
 	"math"
+	"time"
 )
 
 // ImguiWrapping is the state holder for the imgui framework
@@ -19,6 +22,8 @@ type ImguiWrapping struct {
 	runner           func()
 	mouseJustPressed [3]bool
 }
+
+var cursors []*glfw.Cursor
 
 const (
 	mouseButtonPrimary   = 0
@@ -60,6 +65,18 @@ func NewImgui(platform *platform.Platform, renderer *OpenGL3, context *imgui.Con
 		context:  context,
 		time:     0}
 	inputState.setKeyMapping()
+	inputState.io.SetMouseDrawCursor(true)
+	inputState.io.SetBackendFlags(imgui.BackendFlagsHasMouseCursors)
+	cursors = make([]*glfw.Cursor, imgui.MouseCursorCount)
+	cursors[imgui.MouseCursorArrow] = glfw.CreateStandardCursor(glfw.ArrowCursor)
+	cursors[imgui.MouseCursorTextInput] = glfw.CreateStandardCursor(glfw.IBeamCursor)
+	cursors[imgui.MouseCursorResizeAll] = glfw.CreateStandardCursor(glfw.ArrowCursor)
+	cursors[imgui.MouseCursorResizeNS] = glfw.CreateStandardCursor(glfw.VResizeCursor)
+	cursors[imgui.MouseCursorResizeEW] = glfw.CreateStandardCursor(glfw.HResizeCursor)
+	cursors[imgui.MouseCursorResizeNESW] = glfw.CreateStandardCursor(glfw.ArrowCursor)
+	cursors[imgui.MouseCursorResizeNWSE] = glfw.CreateStandardCursor(glfw.ArrowCursor)
+	cursors[imgui.MouseCursorHand] = glfw.CreateStandardCursor(glfw.HandCursor)
+
 	inputState.installCallbacks()
 	return &inputState
 }
@@ -69,6 +86,14 @@ func (input *ImguiWrapping) installCallbacks() {
 	input.window.SetKeyCallback(input.keyChange)
 	input.window.SetCharCallback(input.charChange)
 	input.window.SetSizeCallback(input.sizeChange)
+}
+func (input *ImguiWrapping) updateMouseCursor() {
+	//imgui_cursor := imgui.MouseCursor()
+	if input.window.GetInputMode(glfw.CursorMode) == glfw.CursorDisabled {
+		return
+	}
+	//input.window.SetCursor(cursors[imgui_cursor])
+	input.window.SetInputMode(glfw.CursorMode, glfw.CursorHidden)
 }
 func (input *ImguiWrapping) NewFrame() {
 	cursorX, cursorY := input.platform.GetCursorPos()
@@ -100,10 +125,11 @@ func (input *ImguiWrapping) NewFrame() {
 		input.io.SetMousePosition(imgui.Vec2{X: -math.MaxFloat32, Y: -math.MaxFloat32})
 	}
 	for i := 0; i < len(input.mouseJustPressed); i++ {
-		down := input.mouseJustPressed[i] || mouseState.MousePress[0] == true
+		down := input.mouseJustPressed[i] || (input.window.GetMouseButton(glfwButtonIDByIndex[i]) == glfw.Press)
 		input.io.SetMouseButtonDown(i, down)
 		input.mouseJustPressed[i] = false
 	}
+	input.updateMouseCursor()
 
 	imgui.NewFrame()
 }
@@ -130,6 +156,7 @@ func (input *ImguiWrapping) setKeyMapping() {
 	input.io.KeyMap(imgui.KeyX, int(glfw.KeyX))
 	input.io.KeyMap(imgui.KeyY, int(glfw.KeyY))
 	input.io.KeyMap(imgui.KeyZ, int(glfw.KeyZ))
+
 }
 func (input *ImguiWrapping) keyChange(window *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
 	if action == glfw.Press {
@@ -148,13 +175,54 @@ func (input *ImguiWrapping) keyChange(window *glfw.Window, key glfw.Key, scancod
 func (input *ImguiWrapping) charChange(window *glfw.Window, char rune) {
 	input.io.AddInputCharacters(string(char))
 }
-func (input *ImguiWrapping) Run(runner func()) {
-	input.runner = runner
-	for !input.platform.ShouldStop() {
-		input.Render()
+func (input *ImguiWrapping) PID(ticker *time.Ticker) {
+	controlTicker := time.NewTicker(time.Second / 2)
+	pidtime := int64(10000)
+	kp := float32(1000000000)
+	ki := float32(900000000)
+	kd := float32(500000000)
+	I := float32(0)
+	prErr := float32(0.0)
+	for true {
+		frameTime := input.io.Framerate()
+		if frameTime < 0.00001 {
+			<-controlTicker.C
+			continue
+		}
+		Time := 1.0 / (input.io.Framerate())
+		RequiredTime := 1.0 / (float32(env.FPS) - 0.001)
+		errorVal := RequiredTime - Time
+		P := errorVal
+		I += errorVal
+		D := errorVal - prErr
+		pidtime = int64(P*kp + I*ki + D*kd)
+		println("PID:", pidtime, "Time:", Time, "RequiredTime:", RequiredTime)
+		if pidtime < 0 {
+			pidtime = 0
+		} else if time.Duration(pidtime) > time.Second/2 {
+			pidtime = int64(time.Second / 2)
+		}
+		ticker.Reset(time.Nanosecond*time.Duration(pidtime) + 2)
+		prErr = P
+		<-controlTicker.C
 	}
 }
+func (input *ImguiWrapping) Run(runner func(), ticker *time.Ticker) {
+	input.runner = runner
+	//FrameTime Controller
+	//go input.PID(ticker)
+
+	mainthread.Run(func() {
+		for !input.platform.ShouldStop() {
+			mainthread.Call(input.Render)
+			<-ticker.C
+		}
+	})
+
+}
 func (input *ImguiWrapping) Render() {
+	input.platform.ProcessEvents()
+	input.NewFrame()
 	input.runner()
 	p := input.platform
 	r := input.renderer

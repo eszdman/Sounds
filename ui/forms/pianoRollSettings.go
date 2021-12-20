@@ -26,8 +26,14 @@ func UseDefaultPianoRoll() {
 	currentParameters.PianoOctaves = PianoOctaves
 	currentParameters.PianoCount = PianoCount
 }
-func PianoRollSettings(keep *bool) {
-	if !imgui.BeginV("PianoRollSettings", keep, imgui.WindowFlagsNone) {
+
+var usePianoRollSettings = false
+
+func PianoRollSettings() {
+	if !usePianoRollSettings {
+		return
+	}
+	if !imgui.BeginV("PianoRollSettings", &usePianoRollSettings, imgui.WindowFlagsNone) {
 		imgui.End()
 		return
 	}

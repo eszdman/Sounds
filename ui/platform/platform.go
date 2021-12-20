@@ -23,7 +23,6 @@ func NewPlatform(windowWidth int, windowHeight int, name string) (*Platform, err
 	glfw.WindowHint(glfw.ContextVersionMinor, 2)
 	glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCoreProfile)
 	glfw.WindowHint(glfw.OpenGLForwardCompatible, 1)
-
 	window, err := glfw.CreateWindow(windowWidth, windowHeight, name, nil, nil)
 	if err != nil {
 		glfw.Terminate()

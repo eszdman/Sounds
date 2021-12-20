@@ -1,8 +1,11 @@
 package forms
 
 import (
+	"github.com/eszdman/Sounds/env"
 	"github.com/inkyblackness/imgui-go/v4"
 	"golang.org/x/image/colornames"
+	"image/color"
+	"strconv"
 )
 
 var currentParameters PianoRollParameters
@@ -69,17 +72,93 @@ func pianoNames(i int) (out string) {
 	out += string(rune('0' + octaves - 1))
 	return
 }
+
+var clickedRoll = 0
+var clickedPianoY = 0
+
+func callNote(voiceNote *env.VoiceNote, drawList imgui.DrawList, cursor imgui.Vec2, i int) {
+	end := imgui.WindowSize().Plus(imgui.Vec2{X: imgui.ScrollX(), Y: imgui.ScrollY()})
+	startTile := imgui.Vec2{
+		X: cursor.X + float32(currentParameters.Roll)*float32(voiceNote.RollStart),
+		Y: cursor.Y + float32(currentParameters.PianoY)*float32(voiceNote.RollPitch),
+	}
+	endTile := imgui.Vec2{
+		X: cursor.X + float32(currentParameters.Roll)*float32(voiceNote.RollEnd),
+		Y: cursor.Y + float32(currentParameters.PianoY)*float32(voiceNote.RollPitch+1),
+	}
+	start := cursor.Plus(imgui.Vec2{X: imgui.ScrollX(), Y: imgui.ScrollY()})
+	if endTile.X > start.X && startTile.X < start.X+end.X && endTile.Y > start.Y && startTile.Y < start.Y+end.Y {
+		cursorN := startTile.Minus(cursor)
+
+		name := strconv.Itoa(i)
+		end := endTile.Minus(imgui.Vec2{X: float32(currentParameters.Roll)})
+		drawList.AddRectFilledV(startTile, end, imgui.Packed(colornames.White), 6, imgui.DrawFlagsRoundCornersLeft)
+		drawList.AddRectFilledV(end.Minus(imgui.Vec2{Y: float32(currentParameters.PianoY)}), endTile, imgui.Packed(color.RGBA{81, 81, 163, 0xff}), 0, imgui.DrawFlagsNone)
+		noteSize := imgui.Vec2{
+			X: float32(currentParameters.Roll * int32(voiceNote.RollEnd-voiceNote.RollStart-1)),
+			Y: float32(currentParameters.PianoY),
+		}
+		imgui.PushID("note" + name)
+		defer imgui.PopID()
+		imgui.SetCursorPos(cursorN.Plus(imgui.Vec2{Y: imgui.TextLineHeight()/2.0 + float32(currentParameters.PianoY)}))
+		imgui.PushItemWidth(float32(currentParameters.Roll * int32(voiceNote.RollEnd-voiceNote.RollStart-1)))
+		imgui.InputTextV("", &voiceNote.Lyrics, imgui.InputTextFlagsCharsNoBlank, nil)
+		imgui.IsItemActive()
+		imgui.PopItemWidth()
+		if imgui.IsMouseDoubleClicked(0) && imgui.IsItemActive() {
+
+		}
+		imgui.SetCursorPos(cursorN)
+		imgui.InvisibleButton("noteMain", imgui.Vec2{
+			X: float32(currentParameters.Roll * int32(voiceNote.RollEnd-voiceNote.RollStart-1)),
+			Y: float32(currentParameters.PianoY),
+		})
+
+		xMouse, yMouse := mouseToRollCoords(imgui.MousePos().Minus(cursor))
+		if imgui.IsItemClicked() {
+			clickedRoll = xMouse - voiceNote.RollStart
+			clickedPianoY = yMouse - voiceNote.RollPitch
+		}
+		if imgui.IsItemActive() && imgui.IsMouseDragging(0, 0) {
+			xMouse -= clickedRoll + voiceNote.RollStart
+			yMouse -= clickedPianoY + voiceNote.RollPitch
+			voiceNote.RollPitch += yMouse
+			voiceNote.RollStart += xMouse
+			voiceNote.RollEnd += xMouse
+		}
+
+		imgui.SetCursorPos(cursorN.Plus(imgui.Vec2{X: noteSize.X}))
+		imgui.InvisibleButton("nodeEnd", imgui.Vec2{
+			X: float32(currentParameters.Roll),
+			Y: float32(currentParameters.PianoY),
+		})
+		if imgui.IsItemClicked() {
+			clickedRoll = xMouse - voiceNote.RollEnd
+		}
+		if imgui.IsItemActive() && imgui.IsMouseDragging(0, 0) {
+			xMouse -= clickedRoll + voiceNote.RollEnd
+			voiceNote.RollEnd += xMouse
+			if voiceNote.RollEnd-voiceNote.RollStart < 2 {
+				voiceNote.RollEnd = voiceNote.RollStart + 2
+			}
+		}
+	}
+
+}
 func childRoll(size imgui.Vec2) {
 	scrollY := imgui.ScrollY()
-	if !imgui.BeginChildV("PianoRoll2", size, true, imgui.WindowFlagsNoScrollWithMouse|imgui.WindowFlagsNoScrollbar|imgui.WindowFlagsAlwaysHorizontalScrollbar) {
-		imgui.EndChild()
+	defer imgui.EndChild()
+	if !imgui.BeginChildV("PianoRoll2", size, true,
+		imgui.WindowFlagsNoScrollWithMouse|
+			imgui.WindowFlagsNoScrollbar|
+			imgui.WindowFlagsAlwaysHorizontalScrollbar) {
 		return
 	}
 	cursor := imgui.CursorScreenPos()
 	mouse := imgui.MousePos()
 	drawList := imgui.WindowDrawList()
-	color1 := imgui.Packed(colornames.Gray)
-	color2 := imgui.Packed(colornames.Black)
+	color1 := imgui.Packed(colornames.Darkgray)
+	color2 := imgui.Packed(colornames.Gray)
 	var color imgui.PackedColor
 	drawLines := func(i int) {
 		i2 := i
@@ -89,7 +168,8 @@ func childRoll(size imgui.Vec2) {
 		} else {
 			color = color2
 		}
-		drawList.AddRectFilled(imgui.Vec2{X: cursor.X, Y: cursor.Y + float32(i)*float32(currentParameters.PianoY)}, imgui.Vec2{cursor.X + float32(10*200), cursor.Y + float32(i+1)*float32(currentParameters.PianoY)}, color)
+		drawList.AddRectFilled(imgui.Vec2{X: cursor.X, Y: cursor.Y + float32(i)*float32(currentParameters.PianoY)},
+			imgui.Vec2{X: cursor.X + float32(10*200), Y: cursor.Y + float32(i+1)*float32(currentParameters.PianoY)}, color)
 	}
 	pianoDrawer(drawLines)
 
@@ -99,15 +179,17 @@ func childRoll(size imgui.Vec2) {
 		X: cursor.X + float32(xMouse)*float32(currentParameters.Roll),
 		Y: cursor.Y + float32(yMouse)*float32(currentParameters.PianoY)}
 	rect := imgui.Vec2{float32(currentParameters.Roll), float32(currentParameters.PianoY)}
-	drawList.AddRectFilled(rollPosition, rollPosition.Plus(rect), imgui.Packed(colornames.Purple))
-	//drawList.AddText(imgui.Vec2{
-	//	X: cursor.X + float32(xMouse)*Roll,
-	//	Y: cursor.Y + float32(yMouse)*PianoY + fontY/2}, imgui.Packed(colornames.Purple), "Test2")
-	imgui.SetScrollY(scrollY)
-	if imgui.IsMouseDoubleClicked(1) {
-
+	for i := 0; i < len(env.VoiceNotes); i++ {
+		callNote(&env.VoiceNotes[i], drawList, cursor, i)
 	}
-	imgui.EndChild()
+	imgui.SetScrollY(scrollY)
+	drawList.AddRectFilled(rollPosition, rollPosition.Plus(rect), imgui.Packed(colornames.Purple))
+	imgui.Dummy(imgui.Vec2{float32(10 * 200), 0})
+
+	if imgui.IsMouseDoubleClicked(0) && imgui.IsWindowFocused() {
+		env.VoiceNotes = append(env.VoiceNotes, env.VoiceNote{RollStart: xMouse, RollEnd: xMouse + 3, RollPitch: yMouse})
+	}
+
 }
 func PianoRoll() {
 	//imgui.SetNextWindowSize(imgui.Vec2{1000,1000})

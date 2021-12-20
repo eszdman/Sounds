@@ -4,17 +4,12 @@ import (
 	"fmt"
 	"github.com/eszdman/Sounds/env"
 	"github.com/eszdman/Sounds/ui/forms"
-	"github.com/eszdman/Sounds/ui/gui"
 	"github.com/eszdman/Sounds/ui/platform"
+	"github.com/eszdman/Sounds/ui/wrapper"
 	"github.com/inkyblackness/imgui-go/v4"
 	"os"
 )
 
-const (
-	ScrollBarSize = 10
-	PianoOctaves  = 7
-	PianoCount    = PianoOctaves * 12
-)
 const windowWidth = 1600
 const windowHeight = 900
 
@@ -28,7 +23,7 @@ func RunUI() {
 		os.Exit(-1)
 	}
 	keep := true
-	imguiRenderer, err := gui.NewOpenGL3("#version 430")
+	imguiRenderer, err := wrapper.NewOpenGL3("#version 430")
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(-1)
@@ -36,22 +31,26 @@ func RunUI() {
 	defer env.NewPlatform.Dispose()
 	defer context.Destroy()
 	defer imguiRenderer.Dispose()
-	imguiWrapping := gui.NewImgui(env.NewPlatform, imguiRenderer, context)
+	imguiWrapping := wrapper.NewImgui(env.NewPlatform, imguiRenderer, context)
 	imgui.StyleColorsClassic()
 	forms.UseDefaultPianoRoll()
+	env.Init()
 	mainRunner := func() {
-		env.NewPlatform.ProcessEvents()
-		imguiWrapping.NewFrame()
-		{
-			forms.MenuBar(&keep, env.NewPlatform.DisplaySize())
-			if keep {
-				imgui.ShowDemoWindow(&keep)
-			}
-			forms.PianoRoll()
-			if env.PianoSettings {
-				forms.PianoRollSettings(&env.PianoSettings)
-			}
+		/*imgui.PushStyleVarFloat(imgui.StyleVarWindowRounding,6)
+		imgui.PushStyleVarFloat(imgui.StyleVarFrameRounding,12)
+		imgui.PushStyleVarFloat(imgui.StyleVarPopupRounding,6)
+		imgui.PushStyleVarFloat(imgui.StyleVarGrabRounding,12)
+		defer imgui.PopStyleVar()
+		defer imgui.PopStyleVar()
+		defer imgui.PopStyleVar()
+		defer imgui.PopStyleVar()*/
+		if keep {
+			imgui.ShowDemoWindow(&keep)
 		}
+		forms.MenuBar(env.NewPlatform.DisplaySize())
+		forms.PianoRoll()
+		forms.PianoRollSettings()
+		forms.RenderMenu()
 	}
-	imguiWrapping.Run(mainRunner)
+	imguiWrapping.Run(mainRunner, env.Ticker)
 }
