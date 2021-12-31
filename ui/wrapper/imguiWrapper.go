@@ -1,7 +1,7 @@
 package wrapper
 
 import (
-	"github.com/eszdman/Sounds/env"
+	"github.com/eszdman/Sounds/renderer"
 	"github.com/eszdman/Sounds/ui/platform"
 	"github.com/faiface/mainthread"
 	"github.com/go-gl/gl/v3.2-core/gl"
@@ -13,7 +13,8 @@ import (
 
 // ImguiWrapping is the state holder for the imgui framework
 type ImguiWrapping struct {
-	io               *imgui.IO
+	IO               *imgui.IO
+	Fonts            []imgui.Font
 	time             float64
 	window           *glfw.Window
 	platform         *platform.Platform
@@ -21,6 +22,7 @@ type ImguiWrapping struct {
 	renderer         *OpenGL3
 	runner           func()
 	mouseJustPressed [3]bool
+	MouseDelta       float32
 }
 
 var cursors []*glfw.Cursor
@@ -52,21 +54,22 @@ type ImguiMouseState struct {
 }
 
 var imguiIO imgui.IO
-var inputState ImguiWrapping
+var input ImguiWrapping
 
 // NewImgui initializes a new imgui context and a input object
 func NewImgui(platform *platform.Platform, renderer *OpenGL3, context *imgui.Context) *ImguiWrapping {
+
 	imguiIO = imgui.CurrentIO()
-	inputState = ImguiWrapping{
-		io:       &imguiIO,
+	input = ImguiWrapping{
+		IO:       &imguiIO,
 		window:   platform.Window,
 		platform: platform,
 		renderer: renderer,
 		context:  context,
 		time:     0}
-	inputState.setKeyMapping()
-	inputState.io.SetMouseDrawCursor(true)
-	inputState.io.SetBackendFlags(imgui.BackendFlagsHasMouseCursors)
+	input.setKeyMapping()
+	input.IO.SetMouseDrawCursor(true)
+	input.IO.SetBackendFlags(imgui.BackendFlagsHasMouseCursors)
 	cursors = make([]*glfw.Cursor, imgui.MouseCursorCount)
 	cursors[imgui.MouseCursorArrow] = glfw.CreateStandardCursor(glfw.ArrowCursor)
 	cursors[imgui.MouseCursorTextInput] = glfw.CreateStandardCursor(glfw.IBeamCursor)
@@ -76,9 +79,9 @@ func NewImgui(platform *platform.Platform, renderer *OpenGL3, context *imgui.Con
 	cursors[imgui.MouseCursorResizeNESW] = glfw.CreateStandardCursor(glfw.ArrowCursor)
 	cursors[imgui.MouseCursorResizeNWSE] = glfw.CreateStandardCursor(glfw.ArrowCursor)
 	cursors[imgui.MouseCursorHand] = glfw.CreateStandardCursor(glfw.HandCursor)
-
-	inputState.installCallbacks()
-	return &inputState
+	input.Fonts = make([]imgui.Font, 0)
+	input.installCallbacks()
+	return &input
 }
 func (input *ImguiWrapping) installCallbacks() {
 	input.window.SetMouseButtonCallback(input.mouseButtonChange)
@@ -109,24 +112,24 @@ func (input *ImguiWrapping) NewFrame() {
 			sizes[i] = 500
 		}
 	}
-	input.io.SetDisplaySize(imgui.Vec2{X: input.platform.DisplaySize()[0], Y: input.platform.DisplaySize()[1]})
+	input.IO.SetDisplaySize(imgui.Vec2{X: input.platform.DisplaySize()[0], Y: input.platform.DisplaySize()[1]})
 
 	// Setup time step
 	currentTime := glfw.GetTime()
 	if input.time > 0 {
-		input.io.SetDeltaTime(float32(currentTime - input.time))
+		input.IO.SetDeltaTime(float32(currentTime - input.time))
 	}
 	input.time = currentTime
 
 	// Setup inputs
 	if input.platform.IsFocused() {
-		input.io.SetMousePosition(imgui.Vec2{X: mouseState.MousePosX, Y: mouseState.MousePosY})
+		input.IO.SetMousePosition(imgui.Vec2{X: mouseState.MousePosX, Y: mouseState.MousePosY})
 	} else {
-		input.io.SetMousePosition(imgui.Vec2{X: -math.MaxFloat32, Y: -math.MaxFloat32})
+		input.IO.SetMousePosition(imgui.Vec2{X: -math.MaxFloat32, Y: -math.MaxFloat32})
 	}
 	for i := 0; i < len(input.mouseJustPressed); i++ {
 		down := input.mouseJustPressed[i] || (input.window.GetMouseButton(glfwButtonIDByIndex[i]) == glfw.Press)
-		input.io.SetMouseButtonDown(i, down)
+		input.IO.SetMouseButtonDown(i, down)
 		input.mouseJustPressed[i] = false
 	}
 	input.updateMouseCursor()
@@ -134,46 +137,46 @@ func (input *ImguiWrapping) NewFrame() {
 	imgui.NewFrame()
 }
 func (input *ImguiWrapping) setKeyMapping() {
-	// Keyboard mapping. ImGui will use those indices to peek into the io.KeysDown[] array.
-	input.io.KeyMap(imgui.KeyTab, int(glfw.KeyTab))
-	input.io.KeyMap(imgui.KeyLeftArrow, int(glfw.KeyLeft))
-	input.io.KeyMap(imgui.KeyRightArrow, int(glfw.KeyRight))
-	input.io.KeyMap(imgui.KeyUpArrow, int(glfw.KeyUp))
-	input.io.KeyMap(imgui.KeyDownArrow, int(glfw.KeyDown))
-	input.io.KeyMap(imgui.KeyPageUp, int(glfw.KeyPageUp))
-	input.io.KeyMap(imgui.KeyPageDown, int(glfw.KeyPageDown))
-	input.io.KeyMap(imgui.KeyHome, int(glfw.KeyHome))
-	input.io.KeyMap(imgui.KeyEnd, int(glfw.KeyEnd))
-	input.io.KeyMap(imgui.KeyInsert, int(glfw.KeyInsert))
-	input.io.KeyMap(imgui.KeyDelete, int(glfw.KeyDelete))
-	input.io.KeyMap(imgui.KeyBackspace, int(glfw.KeyBackspace))
-	input.io.KeyMap(imgui.KeySpace, int(glfw.KeySpace))
-	input.io.KeyMap(imgui.KeyEnter, int(glfw.KeyEnter))
-	input.io.KeyMap(imgui.KeyEscape, int(glfw.KeyEscape))
-	input.io.KeyMap(imgui.KeyA, int(glfw.KeyA))
-	input.io.KeyMap(imgui.KeyC, int(glfw.KeyC))
-	input.io.KeyMap(imgui.KeyV, int(glfw.KeyV))
-	input.io.KeyMap(imgui.KeyX, int(glfw.KeyX))
-	input.io.KeyMap(imgui.KeyY, int(glfw.KeyY))
-	input.io.KeyMap(imgui.KeyZ, int(glfw.KeyZ))
+	// Keyboard mapping. ImGui will use those indices to peek into the IO.KeysDown[] array.
+	input.IO.KeyMap(imgui.KeyTab, int(glfw.KeyTab))
+	input.IO.KeyMap(imgui.KeyLeftArrow, int(glfw.KeyLeft))
+	input.IO.KeyMap(imgui.KeyRightArrow, int(glfw.KeyRight))
+	input.IO.KeyMap(imgui.KeyUpArrow, int(glfw.KeyUp))
+	input.IO.KeyMap(imgui.KeyDownArrow, int(glfw.KeyDown))
+	input.IO.KeyMap(imgui.KeyPageUp, int(glfw.KeyPageUp))
+	input.IO.KeyMap(imgui.KeyPageDown, int(glfw.KeyPageDown))
+	input.IO.KeyMap(imgui.KeyHome, int(glfw.KeyHome))
+	input.IO.KeyMap(imgui.KeyEnd, int(glfw.KeyEnd))
+	input.IO.KeyMap(imgui.KeyInsert, int(glfw.KeyInsert))
+	input.IO.KeyMap(imgui.KeyDelete, int(glfw.KeyDelete))
+	input.IO.KeyMap(imgui.KeyBackspace, int(glfw.KeyBackspace))
+	input.IO.KeyMap(imgui.KeySpace, int(glfw.KeySpace))
+	input.IO.KeyMap(imgui.KeyEnter, int(glfw.KeyEnter))
+	input.IO.KeyMap(imgui.KeyEscape, int(glfw.KeyEscape))
+	input.IO.KeyMap(imgui.KeyA, int(glfw.KeyA))
+	input.IO.KeyMap(imgui.KeyC, int(glfw.KeyC))
+	input.IO.KeyMap(imgui.KeyV, int(glfw.KeyV))
+	input.IO.KeyMap(imgui.KeyX, int(glfw.KeyX))
+	input.IO.KeyMap(imgui.KeyY, int(glfw.KeyY))
+	input.IO.KeyMap(imgui.KeyZ, int(glfw.KeyZ))
 
 }
 func (input *ImguiWrapping) keyChange(window *glfw.Window, key glfw.Key, scancode int, action glfw.Action, mods glfw.ModifierKey) {
 	if action == glfw.Press {
-		input.io.KeyPress(int(key))
+		input.IO.KeyPress(int(key))
 	}
 	if action == glfw.Release {
-		input.io.KeyRelease(int(key))
+		input.IO.KeyRelease(int(key))
 	}
 
 	// Modifiers are not reliable across systems
-	input.io.KeyCtrl(int(glfw.KeyLeftControl), int(glfw.KeyRightControl))
-	input.io.KeyShift(int(glfw.KeyLeftShift), int(glfw.KeyRightShift))
-	input.io.KeyAlt(int(glfw.KeyLeftAlt), int(glfw.KeyRightAlt))
-	input.io.KeySuper(int(glfw.KeyLeftSuper), int(glfw.KeyRightSuper))
+	input.IO.KeyCtrl(int(glfw.KeyLeftControl), int(glfw.KeyRightControl))
+	input.IO.KeyShift(int(glfw.KeyLeftShift), int(glfw.KeyRightShift))
+	input.IO.KeyAlt(int(glfw.KeyLeftAlt), int(glfw.KeyRightAlt))
+	input.IO.KeySuper(int(glfw.KeyLeftSuper), int(glfw.KeyRightSuper))
 }
 func (input *ImguiWrapping) charChange(window *glfw.Window, char rune) {
-	input.io.AddInputCharacters(string(char))
+	input.IO.AddInputCharacters(string(char))
 }
 func (input *ImguiWrapping) PID(ticker *time.Ticker) {
 	controlTicker := time.NewTicker(time.Second / 2)
@@ -184,13 +187,13 @@ func (input *ImguiWrapping) PID(ticker *time.Ticker) {
 	I := float32(0)
 	prErr := float32(0.0)
 	for true {
-		frameTime := input.io.Framerate()
+		frameTime := input.IO.Framerate()
 		if frameTime < 0.00001 {
 			<-controlTicker.C
 			continue
 		}
-		Time := 1.0 / (input.io.Framerate())
-		RequiredTime := 1.0 / (float32(env.FPS) - 0.001)
+		Time := 1.0 / (input.IO.Framerate())
+		RequiredTime := 1.0 / (float32(renderer.FPS) - 0.001)
 		errorVal := RequiredTime - Time
 		P := errorVal
 		I += errorVal
@@ -253,5 +256,6 @@ func (input *ImguiWrapping) mouseButtonChange(window *glfw.Window, rawButton glf
 	}
 }
 func (input *ImguiWrapping) mouseScrollChange(window *glfw.Window, x, y float64) {
-	input.io.AddMouseWheelDelta(float32(x), float32(y))
+	input.IO.AddMouseWheelDelta(float32(x), float32(y))
+	input.MouseDelta = float32(y)
 }

@@ -2,6 +2,7 @@ package forms
 
 import (
 	"github.com/eszdman/Sounds/env"
+	"github.com/eszdman/Sounds/renderer"
 	"github.com/inkyblackness/imgui-go/v4"
 	"os"
 	"time"
@@ -17,12 +18,12 @@ func RenderMenu() {
 	if !imgui.BeginV("Render Settings", &useRenderMenu, imgui.WindowFlagsNone) {
 		return
 	}
-	if env.FPS < 400 {
-		imgui.SliderIntV("FPS", &env.FPS, 5, 400, "FPS: %d", imgui.SliderFlagsNone)
-		env.Ticker.Reset(time.Second / time.Duration(env.FPS))
+	if renderer.FPS < 400 {
+		imgui.SliderIntV("FPS", &renderer.FPS, 5, 400, "FPS: %d", imgui.SliderFlagsNone)
+		renderer.Ticker.Reset(time.Second / time.Duration(renderer.FPS))
 	} else {
-		imgui.SliderIntV("FPS", &env.FPS, 5, 400, "FPS: UNLIMITED", imgui.SliderFlagsNone)
-		env.Ticker.Reset(time.Nanosecond)
+		imgui.SliderIntV("FPS", &renderer.FPS, 5, 400, "FPS: UNLIMITED", imgui.SliderFlagsNone)
+		renderer.Ticker.Reset(time.Nanosecond)
 	}
 }
 func MenuBar(size [2]float32) {

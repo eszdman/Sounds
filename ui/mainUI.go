@@ -3,6 +3,8 @@ package ui
 import (
 	"fmt"
 	"github.com/eszdman/Sounds/env"
+	"github.com/eszdman/Sounds/renderer"
+	"github.com/eszdman/Sounds/setting"
 	"github.com/eszdman/Sounds/ui/forms"
 	"github.com/eszdman/Sounds/ui/platform"
 	"github.com/eszdman/Sounds/ui/wrapper"
@@ -17,6 +19,8 @@ const windowHeight = 900
 func RunUI() {
 	var err error
 	env.NewPlatform, err = platform.NewPlatform(windowWidth, windowHeight, "SoundEngine")
+	//var atlas imgui.FontAtlas
+
 	context := imgui.CreateContext(nil)
 
 	if err != nil {
@@ -25,19 +29,24 @@ func RunUI() {
 	}
 	keep := true
 	version := "#version 430"
-	os := runtime.GOOS
-	switch os {
+	osName := runtime.GOOS
+	switch osName {
+	//Macos
 	case "darwin":
 		version = "#version 150"
 	default:
 	}
 	imguiRenderer, err := wrapper.NewOpenGL3(version)
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(-1)
+	}
 	defer env.NewPlatform.Dispose()
 	defer context.Destroy()
 	defer imguiRenderer.Dispose()
-	imguiWrapping := wrapper.NewImgui(env.NewPlatform, imguiRenderer, context)
+	env.ImguiWrapping = wrapper.NewImgui(env.NewPlatform, imguiRenderer, context)
 	imgui.StyleColorsClassic()
-	forms.UseDefaultPianoRoll()
+	setting.UseDefaultPianoRoll()
 	env.Init()
 	mainRunner := func() {
 		/*imgui.PushStyleVarFloat(imgui.StyleVarWindowRounding,6)
@@ -56,5 +65,6 @@ func RunUI() {
 		forms.PianoRollSettings()
 		forms.RenderMenu()
 	}
-	imguiWrapping.Run(mainRunner, env.Ticker)
+	env.ImguiWrapping.Run(mainRunner, renderer.Ticker)
+	env.DeInit()
 }

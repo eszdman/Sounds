@@ -1,31 +1,9 @@
 package forms
 
 import (
+	"github.com/eszdman/Sounds/setting"
 	"github.com/inkyblackness/imgui-go/v4"
 )
-
-const (
-	PianoY       = 30
-	PianoX       = 100
-	PianoX2      = 150
-	Roll         = 10
-	PianoOctaves = 7
-	PianoCount   = PianoOctaves * 12
-)
-
-type PianoRollParameters struct {
-	PianoY, PianoX, PianoX2, Roll int32
-	PianoOctaves, PianoCount      int32
-}
-
-func UseDefaultPianoRoll() {
-	currentParameters.PianoY = PianoY
-	currentParameters.PianoX = PianoX
-	currentParameters.PianoX2 = PianoX2
-	currentParameters.Roll = Roll
-	currentParameters.PianoOctaves = PianoOctaves
-	currentParameters.PianoCount = PianoCount
-}
 
 var usePianoRollSettings = false
 
@@ -33,16 +11,16 @@ func PianoRollSettings() {
 	if !usePianoRollSettings {
 		return
 	}
-	if !imgui.BeginV("PianoRollSettings", &usePianoRollSettings, imgui.WindowFlagsNone) {
+	if !imgui.BeginV("PianoRollSettings", &usePianoRollSettings, imgui.WindowFlagsAlwaysAutoResize) {
 		imgui.End()
 		return
 	}
 
-	imgui.SliderInt("Piano X", &currentParameters.PianoX, 1, 400)
-	imgui.SliderInt("Piano Y", &currentParameters.PianoY, 1, 400)
-	imgui.SliderInt("Piano X2", &currentParameters.PianoX2, 1, 800)
-	imgui.InputInt("Roll", &currentParameters.Roll)
-	imgui.SliderInt("PianoOctaves", &currentParameters.PianoOctaves, 1, 10)
-	currentParameters.PianoCount = currentParameters.PianoOctaves * 12
+	imgui.SliderInt("Piano X", &setting.CurrentParameters.PianoX, 1, 400)
+	imgui.SliderInt("Piano Y", &setting.CurrentParameters.PianoY, 1, 400)
+	imgui.SliderInt("Piano X2", &setting.CurrentParameters.PianoX2, 1, 800)
+	imgui.InputInt("Roll", &setting.CurrentParameters.Roll)
+	imgui.SliderInt("PianoOctaves", &setting.CurrentParameters.PianoOctaves, 1, 10)
+	setting.CurrentParameters.PianoCount = setting.CurrentParameters.PianoOctaves * 12
 	imgui.End()
 }

@@ -1,16 +1,20 @@
 package env
 
 import (
+	"github.com/eszdman/Sounds/engine/preview"
 	"github.com/eszdman/Sounds/ui/platform"
-	"time"
+	"github.com/eszdman/Sounds/ui/wrapper"
 )
 
-var PianoSettings = false
 var NewPlatform *platform.Platform
+var ImguiWrapping *wrapper.ImguiWrapping
 var VoiceNotes []VoiceNote
-var FPS = int32(180)
-var Ticker = time.NewTicker(time.Second / time.Duration(FPS))
 
 func Init() {
 	VoiceNotes = make([]VoiceNote, 0)
+	preview.Init()
+}
+
+func DeInit() {
+	preview.DeInit()
 }
