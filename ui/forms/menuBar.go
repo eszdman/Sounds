@@ -15,7 +15,7 @@ func RenderMenu() {
 		return
 	}
 	defer imgui.End()
-	if !imgui.BeginV("Render Settings", &useRenderMenu, imgui.WindowFlagsNone) {
+	if !imgui.BeginV("Render Settings", &useRenderMenu, imgui.WindowFlagsAlwaysAutoResize) {
 		return
 	}
 	if renderer.FPS < 400 {

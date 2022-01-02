@@ -78,8 +78,6 @@ var clickedPianoY = 0
 var noteDC = false
 
 func childRoll(size imgui.Vec2) {
-	//imgui.PushStyleVarFloat(imgui.StyleVarScrollbarSize, float32(setting.CurrentParameters.PianoY))
-	//defer imgui.PopStyleVar()
 	scrollY := imgui.ScrollY()
 	if !env.ImguiWrapping.IO.KeyShiftPressed() {
 		_, w := env.ImguiWrapping.IO.MouseWheel()
@@ -164,7 +162,6 @@ func childRoll(size imgui.Vec2) {
 var isPinned = false
 
 func PianoRoll() {
-	//imgui.SetNextWindowSize(imgui.Vec2{1000,1000})
 	imgui.PushStyleVarVec2(imgui.StyleVarWindowPadding, imgui.Vec2{})
 	defer imgui.PopStyleVar()
 	flags := imgui.WindowFlagsNoScrollbar | imgui.WindowFlagsAlwaysVerticalScrollbar | imgui.WindowFlagsMenuBar | imgui.WindowFlagsNoScrollWithMouse
@@ -175,12 +172,17 @@ func PianoRoll() {
 		imgui.End()
 		return
 	}
+	mouse := imgui.MousePos()
+	drawList := imgui.WindowDrawList()
+	cursor := imgui.CursorScreenPos()
+	cursorWin := imgui.CursorPos()
 	if imgui.BeginMenuBar() {
-		if imgui.BeginMenu("File") {
+		if imgui.BeginMenu("Menu") {
 			if imgui.MenuItem("Open") {
 				go func() {
 					file, _ := os.Open("pianoRoll.roll")
 					encoder := gob.NewDecoder(file)
+					env.VoiceNotes = make([]env.VoiceNote, 0)
 					_ = encoder.Decode(&env.VoiceNotes)
 					_ = file.Close()
 				}()
@@ -193,23 +195,26 @@ func PianoRoll() {
 					_ = file.Close()
 				}()
 			}
+			imgui.Checkbox("Pinned", &isPinned)
 			imgui.EndMenu()
 		}
-		imgui.Checkbox("Pinned", &isPinned)
-
+		imgui.SetCursorPos(imgui.Vec2{
+			X: setting.PianoX2,
+			Y: imgui.CursorPos().Y,
+		})
+		imgui.ButtonV("soundSlider", imgui.Vec2{
+			X: imgui.WindowWidth(),
+			Y: imgui.FrameHeight(),
+		})
 		imgui.EndMenuBar()
 	}
 
-	cursor := imgui.CursorScreenPos()
-	cursorWin := imgui.CursorPos()
-	drawList := imgui.WindowDrawList()
 	drawList.AddRectFilledV(
 		imgui.Vec2{X: cursor.X, Y: cursor.Y},
 		imgui.Vec2{X: cursor.X + float32(setting.CurrentParameters.PianoX2),
 			Y: cursor.Y + float32(setting.CurrentParameters.PianoY)*float32(setting.CurrentParameters.PianoCount+1)},
 		imgui.Packed(colornames.White), 0, imgui.DrawFlagsNone)
-	//sizeY := sizeY2 + sizeY2/2
-	mouse := imgui.MousePos()
+
 	lines := imgui.Packed(colornames.Dimgray)
 	fontY := imgui.FontSize()
 	drawButtons := func(i int) {

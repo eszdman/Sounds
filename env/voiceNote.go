@@ -23,6 +23,5 @@ func (note *VoiceNote) getFullVibrato() func(x float32) float32 {
 
 func (note *VoiceNote) GetFrequency() (output float64) {
 	output = math.Pow(2.0, float64(int(setting.CurrentParameters.PianoCount)-note.RollPitch-58)/12.0) * 440.0
-	println("Frequency:", output)
 	return
 }

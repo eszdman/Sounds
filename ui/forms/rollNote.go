@@ -33,6 +33,7 @@ func callNote(voiceNote *env.VoiceNote, drawList imgui.DrawList, cursor imgui.Ve
 		//color := imgui.Packed(color.RGBA{R: 81, G: 81, B: 163, A: 0xff})
 		color := imgui.Packed(colornames.Black)
 		drawList.AddRectFilledV(end.Minus(imgui.Vec2{Y: float32(setting.CurrentParameters.PianoY)}), endTile, color, 0, imgui.DrawFlagsNone)
+		drawList.AddText(endTile, imgui.Packed(colornames.White), name)
 		noteSize := imgui.Vec2{
 			X: float32(setting.CurrentParameters.Roll * int32(voiceNote.RollEnd-voiceNote.RollStart-1)),
 			Y: float32(setting.CurrentParameters.PianoY),
